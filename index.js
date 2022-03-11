@@ -2,7 +2,8 @@ import { MongoClient } from "mongodb";
 import express from "express";
 import dotenv from "dotenv";
 import cors from 'cors'
-import bcrypt from 'bcrypt'
+import {userRouter} from './Routes/user.js';
+import {movieRouter} from './Routes/movie.js'
 
 dotenv.config();
 const PORT =process.env.PORT;
@@ -11,7 +12,9 @@ const MONGO_URL = process.env.MONGO_URL;
 export const app = express();
 app.use(cors())// Third party Middleware
 app.use(express.json());// Middleware
-// app.use('/movies',movieRouter) // Router
+app.use('/user',userRouter) // Router
+app.use('/movie',movieRouter) // Router
+
 
 async function createConnection() {
     const client = new MongoClient(MONGO_URL);
