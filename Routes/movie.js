@@ -96,8 +96,6 @@ router.route('/addwatchlist')
     }
 
     return response.send({Message:'Added to Watchlist'})
-
-
 })
 
 router.route('/removewatchlist')
