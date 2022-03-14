@@ -1,17 +1,20 @@
-import { client } from "../index.js";
 import express from 'express';
-import {getUser,addUser} from '../DataBase/UserDb.js';
+import {getUser,addUser,updateUser} from '../DataBase/UserDb.js';
+import Mail from '../Mail.js'
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import {OAuth2Client} from 'google-auth-library';
+const clientId=process.env.GOOGLE_CLIENT_ID
+const client=new OAuth2Client(clientId)
 
 const router=express.Router()
 
 router.route("/signup")
 .post(async (request, response) => {
     
-      const {Email,password}=request.body;
+      const {Email,Password}=request.body;
 
-      if(!Email||!password)
+      if(!Email||!Password)
       {
         return response.status(400).send({Message:'All Fields required'})
       }
@@ -23,15 +26,15 @@ router.route("/signup")
         return response.status(400).send({Message: "Email already exists"});
       }
    
-      if(password.length<8)
+      if(Password.length<8)
       {
         return response.status.send({Message:'Password must be longer'});
       }
   
         
-        const hashedPassword= await PasswordGenerator(password)
+        const hashedPassword= await PasswordGenerator(Password)
 
-        const create=await addUser({Email,password:hashedPassword,WatchList:[]});
+        const create=await addUser({Email,Password:hashedPassword,WatchList:[]});
 
         const {insertedId}=create;
 
@@ -49,7 +52,7 @@ router.route("/signup")
   router.route("/login")
   .post(async (request, response) => {
    
-    const {Email,password}=request.body
+    const {Email,Password}=request.body
     
     const user=await getUser({ Email })
       
@@ -62,7 +65,7 @@ router.route("/signup")
   
      
   
-      const checkPassword= await bcrypt.compare(password,dbPassword);
+      const checkPassword= await bcrypt.compare(Password,dbPassword);
   
       if(!checkPassword)
       {
@@ -73,7 +76,7 @@ router.route("/signup")
   
       const token=jwt.sign(payload,process.env.key,{expiresIn: 31556926 })// 1 year in seconds}
   
-      return response.send({token: "Bearer " + token,Email,message:'login successful'})
+      return response.send({token: "Bearer " + token,Email,Message:'login successful'})
   
   });
   
@@ -85,41 +88,41 @@ router.route("/googlesignup")
   
     if(!tokenId)
     {
-      return response.status(400).send({message:'error occurred'})
+      return response.status(400).send({Message:'error occurred'})
     }
   
     const verify= await client.verifyIdToken({idToken:tokenId,audience:process.env.GOOGLE_CLIENT_ID})
   
     if(!verify)
     {
-      return response.status(400).send({message:'error occurred'})
+      return response.status(400).send({Message:'error occurred'})
     } 
   
-    const {Email_verified,Email,name:fullname}=verify.payload;
+    const {email_verified,email}=verify.payload;
     
   
-    if(!Email_verified)
+    if(!email_verified)
     {
-      return response.status(400).send({message:'error occurred'})
+      return response.status(400).send({Message:'error occurred'})
     }
   
-    const user= await getUser({ Email })
+    const user= await getUser({ Email:email })
   
       if(user)
       {
-        return response.status(400).json({ message: "Email already exists" });
+        return response.status(400).json({ Message: "Email already exists" });
       }
    
-    const createPassword=Email+process.env.key
+    const createPassword=email+process.env.key
   
     const hashedPassword= await PasswordGenerator(createPassword);
 
-    const payload={Email}
+    const payload={email}
 
     const token=jwt.sign(payload,process.env.key,{expiresIn: 31556926 })// 1 year in seconds
   
     
-    const create=await addUser({Email,password:hashedPassword,WatchList:[]});
+    const create=await addUser({Email:email,password:hashedPassword,WatchList:[]});
 
     const {insertedId}=create;
 
@@ -140,7 +143,7 @@ router.route('/googlelogin')
     
     if(!tokenId)
     {
-      return response.status(400).send({message:'error occurred'})
+      return response.status(400).send({Message:'error occurred'})
     }
   
   
@@ -148,33 +151,140 @@ router.route('/googlelogin')
   
     if(!verify)
     {
-      return response.status(400).send({message:'error occurred'})
+      return response.status(400).send({Message:'error occurred'})
     } 
   
-    const {Email_verified,Email}=verify.payload;
+    const {email_verified,email}=verify.payload;
   
-    if(!Email_verified)
+    if(!email_verified)
     {
-      return response.status(400).send({message:'error occurred'})
+      return response.status(400).send({Message:'error occurred'})
     }
   
-    const user= await getUser({ Email })
+    const user= await getUser({ Email:email })
   
     if(!user)
     {
-      return response.status(400).json({ message: "User not found" });
+      return response.status(400).json({ Message: "User not found" });
     }
   
     const {_id}=user;
   
   
-    const payload={id:_id,Email}
+    const payload={id:_id,Email:email}
   
     const token=jwt.sign(payload,process.env.key,{expiresIn: 31556926 })// 1 year in seconds}
   
-    return response.send({token:"Bearer " + token,Email,message:'login successful'})
+    return response.send({token:"Bearer " + token,Email:email,Message:'login successful'})
   
   })
+
+  // Forgot Password
+router.route('/forgotpassword')
+.post(async (request,response)=>{
+    const {Email}=request.body;
+    if(!Email)
+    {
+        return response.status(400).send({Msg:"All Fields Required"})
+    }
+
+    const getData=await getUser({Email});
+
+    if(!getData)
+    {
+        return response.status(404).send({Msg:"Invalid Credentials"})
+    }
+
+    const {_id}=getData;
+
+    const token = jwt.sign({ id:_id }, process.env.key);
+
+    const update = await updateUser([{_id},{$set:{Password:token}}]);
+    const {modifiedCount}=update;
+  
+    if(!modifiedCount)
+    {
+      return response
+        .status(400)
+        .send({Message: "Error Occurred" });
+    }
+    
+    const link = `https://localhost:2000/user/forgotpassword/verify/${token}`;
+    const Message=`
+    <b>Forgot Password</b>
+    <a href=${link}>Click the link to reset the password </a>`
+    
+    const responseMsg='Password Reset Link Sent To Email'
+    
+    const obj={Email,Message,response,responseMsg}
+   
+    Mail(obj);
+
+})
+
+
+// Forgot Password Verification
+router.route('/forgotpassword/verify/:id')
+.get(async (request,response)=>{
+    
+    const {id:token}=request.params
+    if(!token)
+    {
+        return response.status(400).send({Message:"Error Occurred"})
+    }
+
+    const tokenVerify = await getUser({ Password: token });
+    
+  if (!tokenVerify) {
+    return response.status(400).send({ Message: "Link Expired" });
+  }
+  return response.redirect(`https://localhost:3000/updatepassword/${token}`)
+
+})
+
+
+// Change Password
+router.route('/updatepassword')
+.post(async (request,response)=>
+{
+    const {token,Password}=request.body;
+
+    if(!(token&&Password))
+    {
+        return response.status(400).send({Message:"All Fields Required"})
+    }
+
+    const data = await getUser({ Password: token });
+
+   if(!data)
+   {
+    return response.status(400).send({Message:'Link Expired'})
+   }
+
+  const { _id } = data;
+   
+  if (Password.length < 8) 
+  {
+    return response.status(401).send({Message:"Password Must be longer"});
+  }
+
+  const hashedPassword = await PasswordGenerator(Password);
+
+  const update = await updateUser([{_id},{$set:{Password:hashedPassword}}]);
+
+  const {modifiedCount}=update
+
+  if(!modifiedCount)
+  {
+    return response
+      .status(400)
+      .send({ Message: "Error Occured" });
+  }
+    
+  return response.send({Message:'Password Changed Successfully'});
+    
+})
+
 
 
     

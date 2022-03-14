@@ -17,5 +17,9 @@ async function addUser(userData)
     return  client.db('Movies').collection('users').insertOne(userData)
 }
 
+async function updateUser(userData)
+{
+    return  client.db('Movies').collection('users').updateOne(userData[0],userData[1])
+}
 
-export {getUser,addUser,getWatchlistUser}
+export {getUser,addUser,updateUser,getWatchlistUser}

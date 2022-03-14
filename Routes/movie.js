@@ -3,12 +3,14 @@ import {
   GetMovies,
   CreateMovie,
   updateWatchList,
+  getWatchlist,Getmoviesbyname,
 } from "../DataBase/MovieDb.js";
 
 import { auth } from "../AuthChecker.js";
-import { getUser } from "../DataBase/UserDb.js";
+import { getUser, getWatchlistUser } from "../DataBase/UserDb.js";
 import express from 'express';
 import { ObjectId } from "mongodb";
+import { response } from "express";
 
 
 const router=express.Router()
@@ -29,8 +31,17 @@ router.route('/getmovies')
 
 router.route('/addmovie')
 .post(async (request,response)=>{
-    const data=request.body;
+    const {data}=request.body;
+
+    const check=await Getmoviesbyname({name:data.name});
+
+    if(check)
+    {
+        return response.status(400).send({Message:'Movie Already Available'});   
+    }
+
     const addMovie=await CreateMovie(data);
+
     return response.send({Message:'Movies Added'})
 })
 
@@ -45,10 +56,12 @@ router.route('/getmoviebyid')
     }
 
     let result = await Getmoviesbyid(id);
+
     if(!result)
     {
         return response.status(404).send({Message:'Movies Not Found'})
     }
+
     return response.send(result);
 })
 
@@ -97,6 +110,36 @@ router.route('/addwatchlist')
 
     return response.send({Message:'Added to Watchlist'})
 })
+
+router.route('/getwatchlist')
+.post(async (request,response)=>{
+
+    const {Email}=request.body;
+
+    if(!Email)
+    {
+        return response.status(400).send({Message:'All Fields Required'})
+    }
+
+    const checkUser=await getUser({Email});
+
+    if(!checkUser)
+    {
+        return response.status(404).send({Message:'User Not found'})
+    }
+
+    const data=await getWatchlist(Email)
+
+    console.log(data);
+    if(!data)
+    {
+        return response.send({Message:'WatchList is Empty'})   
+    }
+
+    return response.send(data);
+
+})
+
 
 router.route('/removewatchlist')
 .delete(async(request,response)=>{
