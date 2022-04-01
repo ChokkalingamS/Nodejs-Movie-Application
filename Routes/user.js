@@ -34,7 +34,7 @@ router.route("/signup")
         
         const hashedPassword= await PasswordGenerator(Password)
 
-        const create=await addUser({Email,Password:hashedPassword,WatchList:[]});
+        const create=await addUser({Email,Password:hashedPassword,type:'user',WatchList:[]});
 
         const {insertedId}=create;
 
@@ -61,7 +61,7 @@ router.route("/signup")
         return response.status(404).json({ Message: "Email not found"});
       }
   
-      const {_id,password:dbPassword}=user;
+      const {_id,password:dbPassword,type}=user;
   
      
   
@@ -74,9 +74,9 @@ router.route("/signup")
   
       const payload={id:_id,Email}
   
-      const token=jwt.sign(payload,process.env.key,{expiresIn: 31556926 })// 1 year in seconds}
+      const token=jwt.sign(payload,process.env.key,{expiresIn:86400 })// 1 day in seconds}
   
-      return response.send({token: "Bearer " + token,Email,Message:'login successful'})
+      return response.send({token: "Bearer " + token,Email,Message:'login successful',type})
   
   });
   
@@ -119,10 +119,10 @@ router.route("/googlesignup")
 
     const payload={email}
 
-    const token=jwt.sign(payload,process.env.key,{expiresIn: 31556926 })// 1 year in seconds
+    const token=jwt.sign(payload,process.env.key,{expiresIn: 86400 })// 1 day in seconds
   
     
-    const create=await addUser({Email:email,password:hashedPassword,WatchList:[]});
+    const create=await addUser({Email:email,password:hashedPassword,type:'user',WatchList:[]});
 
     const {insertedId}=create;
 
@@ -131,7 +131,11 @@ router.route("/googlesignup")
       return response.status.send({Message:'Error Occurred'});
     }
 
-  return response.send({Message:'Signup Successful',token}); 
+    const info= await getUser({ Email:email })
+
+    const {type}=info;
+
+  return response.send({Message:'Signup Successful',token,Email:email,type}); 
   
   })
   
@@ -168,14 +172,14 @@ router.route('/googlelogin')
       return response.status(400).json({ Message: "User not found" });
     }
   
-    const {_id}=user;
+    const {_id,type}=user;
   
   
     const payload={id:_id,Email:email}
   
-    const token=jwt.sign(payload,process.env.key,{expiresIn: 31556926 })// 1 year in seconds}
+    const token=jwt.sign(payload,process.env.key,{expiresIn:86400 })// 1 day in seconds}
   
-    return response.send({token:"Bearer " + token,Email:email,Message:'login successful'})
+    return response.send({token:"Bearer " + token,Email:email,Message:'login successful',type})
   
   })
 
@@ -185,14 +189,14 @@ router.route('/forgotpassword')
     const {Email}=request.body;
     if(!Email)
     {
-        return response.status(400).send({Msg:"All Fields Required"})
+        return response.status(400).send({Message:"All Fields Required"})
     }
 
     const getData=await getUser({Email});
 
     if(!getData)
     {
-        return response.status(404).send({Msg:"Invalid Credentials"})
+        return response.status(404).send({Message:"Invalid Credentials"})
     }
 
     const {_id}=getData;
@@ -249,7 +253,7 @@ router.route('/updatepassword')
 {
     const {token,Password}=request.body;
 
-    if(!(token&&Password))
+    if(!token || !Password)
     {
         return response.status(400).send({Message:"All Fields Required"})
     }
@@ -278,7 +282,7 @@ router.route('/updatepassword')
   {
     return response
       .status(400)
-      .send({ Message: "Error Occured" });
+      .send({ Message: "Error Occurred" });
   }
     
   return response.send({Message:'Password Changed Successfully'});

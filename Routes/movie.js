@@ -3,7 +3,7 @@ import {
   GetMovies,
   CreateMovie,
   updateWatchList,
-  getWatchlist,Getmoviesbyname,
+  getWatchlist,Getmoviesbyname,updateMovie,deleteMovie
 } from "../DataBase/MovieDb.js";
 
 import { auth } from "../AuthChecker.js";
@@ -130,7 +130,7 @@ router.route('/getwatchlist')
 
     const data=await getWatchlist(Email)
 
-    console.log(data);
+    
     if(!data)
     {
         return response.send({Message:'WatchList is Empty'})   
@@ -171,5 +171,94 @@ router.route('/removewatchlist')
     return response.send({Message:'WatchList Removed'});
 })
 
+router.route('/editmovie')
+.put(async(request,response)=>{
+        const {Email,movie}=request.body;
+
+        if(!Email || !Object.keys(movie).length)
+        {
+            return response.status(400).send({Message:'All Fields Required'})
+        }
+    
+        
+        const checkUser=await getUser({Email});
+    
+        if(!checkUser)
+        {
+            return response.status(404).send({Message:'User Not found'})
+        }
+
+
+        const {type}=checkUser;
+
+        if(type==='user')
+        {
+            return response.status(400).send({Message:'Not an Authorized User'})
+        }
+
+        const {_id,name,rating,poster,src,language}=movie;
+
+        let getMovie = await Getmoviesbyid(_id);
+        
+
+        if(!getMovie)
+        {
+            return response.status(404).send({Message:'Movie Not Found'})
+        }
+
+        const updateData=await updateMovie([{_id:ObjectId(_id)},{$set:{name,rating,poster,src,language}}])
+
+        const {modifiedCount}=updateData;
+
+        if(!modifiedCount)
+        {
+            return response.status(400).send({Message:'No Changes'})
+        }
+
+        return response.send({Message:'Movie Updated'})
+})
+
+router.route('/deletemovie')
+.delete(async(request,response)=>{
+    const {Email,id}=request.body;
+
+        if(!Email || !id)
+        {
+            return response.status(400).send({Message:'All Fields Required'})
+        }
+    
+        
+        const checkUser=await getUser({Email});
+    
+        if(!checkUser)
+        {
+            return response.status(404).send({Message:'User Not found'})
+        }
+
+
+        const {type}=checkUser;
+
+        if(type==='user')
+        {
+            return response.status(400).send({Message:'Not an Authorized User'})
+        }
+
+        let getMovie = await Getmoviesbyid(id);
+
+        if(!getMovie)
+        {
+            return response.status(404).send({Message:'Movie Not Found'})
+        }
+
+        const delMovie=await deleteMovie({_id:ObjectId(id)})
+
+        if(!delMovie)
+        {
+            return response.status(400).send({Message:'Error Occurred'})
+        }
+
+        return response.send({Message:"Movie Removed Successfully "})
+
+})
 
 export const  movieRouter=router;
