@@ -213,7 +213,7 @@ router.route('/forgotpassword')
         .send({Message: "Error Occurred" });
     }
     
-    const link = `https://localhost:2000/user/forgotpassword/verify/${token}`;
+    const link = `https://movie--application.herokuapp.com/user/forgotpassword/verify/${token}`;
     const Message=`
     <b>Forgot Password</b>
     <a href=${link}>Click the link to reset the password </a>`
@@ -242,7 +242,7 @@ router.route('/forgotpassword/verify/:id')
   if (!tokenVerify) {
     return response.status(400).send({ Message: "Link Expired" });
   }
-  return response.redirect(`https://localhost:3000/updatepassword/${token}`)
+  return response.redirect(`https://movie-app-lication.netlify.app/updatepassword/${token}`)
 
 })
 

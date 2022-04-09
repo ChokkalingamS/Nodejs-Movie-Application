@@ -26,11 +26,11 @@ export default function Mail(obj)
     transport.sendMail(mailOptions, (err, info) => {
       if (err)
        {
-        return response.status(400).send('Error Occurred')
+        return response.status(400).send({Message:'Error Occurred'})
       } 
       else
        {
-          return response.send({Msg:responseMsg})  
+          return response.send({Message:responseMsg})  
       }
     });
   }
