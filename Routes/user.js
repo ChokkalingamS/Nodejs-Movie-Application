@@ -237,7 +237,7 @@ router.route('/forgotpassword/verify/:id')
         return response.status(400).send({Message:"Error Occurred"})
     }
 
-    const tokenVerify = await getUser({ Password: token });
+    const tokenVerify = await getUser({ password: token });
     
   if (!tokenVerify) {
     return response.status(400).send({ Message: "Link Expired" });
@@ -258,7 +258,7 @@ router.route('/updatepassword')
         return response.status(400).send({Message:"All Fields Required"})
     }
 
-    const data = await getUser({ Password: token });
+    const data = await getUser({ password: token });
 
    if(!data)
    {
@@ -274,7 +274,7 @@ router.route('/updatepassword')
 
   const hashedPassword = await PasswordGenerator(Password);
 
-  const update = await updateUser([{_id},{$set:{Password:hashedPassword}}]);
+  const update = await updateUser([{_id},{$set:{password:hashedPassword}}]);
 
   const {modifiedCount}=update
 
