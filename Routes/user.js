@@ -203,9 +203,9 @@ router.route('/forgotpassword')
 
     const token = jwt.sign({ id:_id }, process.env.key);
 
-    const update = await updateUser([{_id},{$set:{Password:token}}]);
-    const {modifiedCount}=update;
+    const update = await updateUser([{_id},{$set:{password:token}}]);
   
+    console.log(modifiedCount);
     if(!modifiedCount)
     {
       return response
